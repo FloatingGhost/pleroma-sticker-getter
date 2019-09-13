@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+set -euxo pipefail
+
+if [ -z $1 ] | [ -z $2]
+  then
+    echo "Usage: get-stickers <name> <id>"
+fi
+
+echo "Downloading $2 to $1..."
+
+pushd  /var/www/pleroma/priv/static/static/stickers/
+mkdir -p $1
+cd $1
+wget "http://dl.stickershop.line.naver.jp/products/0/0/1/$2/iphone/stickers@2x.zip"
+unzip stickers@2x.zip
+rm stickers@2x.zip
+rm *_key@2x.png
+for file in *@2x.png; do
+	mv $file $(echo $file | sed 's|@2x||')
+done
+
+cp tab_on.png tab.png
+stickers=$(find . -regextype sed -regex "./[0-9]*.png" | sed 's|\./||' | xargs python3 -c "import sys; import json; print(json.dumps(sys.argv[1:]))")
+
+cat > pack.json <<EOF
+{
+        "title": "$1",
+        "author": "idk",
+        "tabIcon": "tab.png",
+	"stickers": $stickers
+}
+EOF
+
+python3 <<EOF
+import json
+with open("/var/www/pleroma/priv/static/static/stickers.json", "r") as f:
+    data = json.load(f)
+data["$1"] = "/static/stickers/$1/"
+with open("/var/www/pleroma/priv/static/static/stickers.json", "w") as f:
+    json.dump(data, f)
+EOF
+
+popd
+
+echo "Added $1, you may want to run fix-iphone over them if they're breaky"
