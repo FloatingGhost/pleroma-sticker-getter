@@ -2,9 +2,17 @@
 
 set -euxo pipefail
 
-if [ -z $1 ] | [ -z $2]
+if [ -z $1 ] | [ -z $2 ]
   then
-    echo "Usage: get-stickers <name> <id>"
+	  echo "Usage: get-stickers <name> <id> (anim?)"
+fi
+
+ANIM=false
+
+if [ ! -z $3 ] & [  "$3" = "yes" ]
+  then
+    echo "you specified that they're animated"
+    ANIM=true
 fi
 
 echo "Downloading $2 to $1..."
@@ -12,15 +20,33 @@ echo "Downloading $2 to $1..."
 pushd  /var/www/pleroma/priv/static/static/stickers/
 mkdir -p $1
 cd $1
-wget "http://dl.stickershop.line.naver.jp/products/0/0/1/$2/iphone/stickers@2x.zip"
-unzip stickers@2x.zip
-rm stickers@2x.zip
-rm *_key@2x.png
-for file in *@2x.png; do
-	mv $file $(echo $file | sed 's|@2x||')
-done
+if $ANIM
+  then 
+	wget "http://dl.stickershop.line.naver.jp/products/0/0/1/$2/iphone/stickerpack@2x.zip"
+	unzip stickerpack@2x.zip
+	rm stickerpack@2x.zip
+	mv tab_on@2x.png tab.png
+	rm *@2x.png
+	mv animation@2x/*.png .
+	rm -rf animation@2x
+	for file in *@2x.png; do
+		fname=$(echo $file | sed 's|@2x||')
+		mv $file $fname
+		ffmpeg -i $fname -plays 0 -final_delay 2 $fname.apng
+		mv $fname.apng $fname
+	done
+  else	
+        wget "http://dl.stickershop.line.naver.jp/products/0/0/1/$2/iphone/stickers@2x.zip"
+	unzip stickers@2x.zip
+	rm stickers@2x.zip
+	rm *_key@2x.png
+	for file in *@2x.png; do
+		mv $file $(echo $file | sed 's|@2x||')
+	done
+	cp tab_on.png tab.png
+fi
 
-cp tab_on.png tab.png
+
 stickers=$(find . -regextype sed -regex "./[0-9]*.png" | sed 's|\./||' | xargs python3 -c "import sys; import json; print(json.dumps(sys.argv[1:]))")
 
 cat > pack.json <<EOF
