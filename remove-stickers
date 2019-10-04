@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+set -euxo pipefail
+
+if [ -z $1 ]
+  then
+	  echo "Usage: get-stickers <name>"
+	  exit 1
+fi
+
+pushd  /var/www/pleroma/priv/static/static/stickers/
+
+if [ ! -d "$1" ] | [ -z $1 ]
+  then
+	  echo "Sticker pack $1 doesn't exist!"
+	  popd
+	  exit 1
+fi
+
+pushd $1
+rm *.png *.meta *.json
+popd
+
+python3 <<EOF
+import json
+with open("/var/www/pleroma/priv/static/static/stickers.json", "r") as f:
+    data = json.load(f)
+data.pop("$1")
+with open("/var/www/pleroma/priv/static/static/stickers.json", "w") as f:
+    json.dump(data, f)
+EOF
+
+popd
+echo "Removed $1"
