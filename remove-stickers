@@ -20,6 +20,7 @@ fi
 pushd $1
 rm *.png *.meta *.json
 popd
+rmdir $1
 
 python3 <<EOF
 import json
